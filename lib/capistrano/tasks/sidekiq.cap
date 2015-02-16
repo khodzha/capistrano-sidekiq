@@ -7,7 +7,9 @@ namespace :load do
     set :sidekiq_log, -> { File.join(shared_path, 'log', 'sidekiq.log') }
     set :sidekiq_timeout, -> { 10 }
     set :sidekiq_role, -> { :app }
-    set :sidekiq_processes, -> { 1 }
+    set :sidekiq_processes, -> { 2 }
+
+    set :sidekiq_per_process_options, -> { [{queue: ''}] }
     # Rbenv and RVM integration
     set :rbenv_map_bins, fetch(:rbenv_map_bins).to_a.concat(%w(sidekiq sidekiqctl))
     set :rvm_map_bins, fetch(:rvm_map_bins).to_a.concat(%w(sidekiq sidekiqctl))
@@ -82,6 +84,19 @@ namespace :sidekiq do
   end
 
   def start_sidekiq(pid_file, idx = 0)
+    if fetch(:sidekiq_per_process_options)
+      options = fetch(:sidekiq_per_process_options)[idx]
+      start_sidekiq_old pid_file, idx, options
+    else
+      start_sidekiq_old pid_file, idx
+    end
+  end
+
+  def option h, k
+    h[k]||fetch(k)
+  end
+
+  def start_sidekiq_old(pid_file, idx = 0, options={})
     args = []
     args.push "--index #{idx}"
     args.push "--pidfile #{pid_file}"
@@ -89,11 +104,11 @@ namespace :sidekiq do
     args.push "--logfile #{fetch(:sidekiq_log)}" if fetch(:sidekiq_log)
     args.push "--require #{fetch(:sidekiq_require)}" if fetch(:sidekiq_require)
     args.push "--tag #{fetch(:sidekiq_tag)}" if fetch(:sidekiq_tag)
-    Array(fetch(:sidekiq_queue)).each do |queue|
+    Array(option(options, :sidekiq_queue)).each do |queue|
       args.push "--queue #{queue}"
     end
     args.push "--config #{fetch(:sidekiq_config)}" if fetch(:sidekiq_config)
-    args.push "--concurrency #{fetch(:sidekiq_concurrency)}" if fetch(:sidekiq_concurrency)
+    args.push "--concurrency #{option(options, :sidekiq_concurrency)}" if option(options, :sidekiq_concurrency)
     # use sidekiq_options for special options
     args.push fetch(:sidekiq_options) if fetch(:sidekiq_options)
 
