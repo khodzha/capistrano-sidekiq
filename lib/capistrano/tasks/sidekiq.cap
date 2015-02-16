@@ -85,7 +85,7 @@ namespace :sidekiq do
 
   def start_sidekiq(pid_file, idx = 0)
     if fetch(:sidekiq_per_process_options)
-      options = fetch(:sidekiq_per_process_options)[idx]
+      options = fetch(:sidekiq_per_process_options)[idx] || {}
       start_sidekiq_old pid_file, idx, options
     else
       start_sidekiq_old pid_file, idx
